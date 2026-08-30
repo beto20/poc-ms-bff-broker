@@ -1,17 +1,13 @@
 name: bff-broker CI/CD
 
-# Solo se dispara cuando cambia el servicio (o su workflow).
+# Solo se ejecuta de forma manual desde la pestana Actions.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "bff-broker/**"
-      - ".github/workflows/bff-broker.yml"
-  pull_request:
-    paths:
-      - "bff-broker/**"
-      - ".github/workflows/bff-broker.yml"
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Desplegar a EKS despues de construir la imagen"
+        type: boolean
+        default: true
 
 # Cancela ejecuciones antiguas de la misma rama.
 concurrency:
@@ -54,13 +50,11 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # 2) Construccion y publicacion de la imagen en GHCR
-  #    (solo en push a main / ejecucion manual, no en PRs)
   # ---------------------------------------------------------------------------
   docker:
     name: Build & Push image
     runs-on: ubuntu-latest
     needs: build-test
-    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
@@ -102,7 +96,7 @@ jobs:
     name: Deploy to EKS
     runs-on: ubuntu-latest
     needs: docker
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: inputs.deploy
     environment: production
     permissions:
       contents: read
