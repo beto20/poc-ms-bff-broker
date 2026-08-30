@@ -24,9 +24,6 @@ jobs:
   build-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: bff-broker
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +42,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bff-broker-surefire-reports
-          path: bff-broker/target/surefire-reports/
+          path: target/surefire-reports/
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
@@ -81,7 +78,7 @@ jobs:
       - name: Build & push
         uses: docker/build-push-action@v6
         with:
-          context: ./bff-broker
+          context: .
           push: true
           tags: |
             ${{ steps.img.outputs.ref }}:${{ github.sha }}
@@ -122,6 +119,6 @@ jobs:
           IMAGE: ${{ needs.docker.outputs.image }}
           TAG: ${{ needs.docker.outputs.tag }}
         run: |
-          kubectl apply -f bff-broker/k8s/
+          kubectl apply -f k8s/
           kubectl set image deployment/bff-broker bff-broker="${IMAGE}:${TAG}"
           kubectl rollout status deployment/bff-broker --timeout=120s
