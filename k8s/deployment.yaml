@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-broker
+  labels:
+    app: bff-broker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bff-broker
+  template:
+    metadata:
+      labels:
+        app: bff-broker
+    spec:
+      containers:
+        - name: bff-broker
+          image: bff-broker:0.0.1-SNAPSHOT
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # In-cluster DNS name of the business-broker Service.
+            - name: BUSINESS_BROKER_URL
+              value: "http://business-broker:8081"
+            # --- OpenTelemetry (agent reads these) ---
+            - name: OTEL_SERVICE_NAME
+              value: "bff-broker"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.observability:4317"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "grpc"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=broker,deployment.environment=poc"
+          # HPA scales on CPU, so requests/limits must be set.
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "384Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          # No actuator on the classpath, so probe the port over TCP.
+          # Swap to httpGet /actuator/health once actuator is added.
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 15
